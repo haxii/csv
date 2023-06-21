@@ -292,6 +292,19 @@ func nextRune(b []byte) rune {
 	return r
 }
 
+func isQuotedField(line []byte) bool {
+	if len(line) == 0 {
+		return false
+	}
+	if line[0] == '"' {
+		return true
+	}
+	if len(line) > 1 && line[0] == '=' && line[1] == '"' {
+		return true
+	}
+	return false
+}
+
 func (r *Reader) readRecord(dst []string) ([]string, error) {
 	if r.Comma == r.Comment || !validDelim(r.Comma) || (r.Comment != 0 && !validDelim(r.Comment)) {
 		return nil, errInvalidDelim
@@ -338,7 +351,7 @@ parseField:
 			line = line[i:]
 			pos.col += i
 		}
-		if len(line) == 0 || (line[0] != '"') {
+		if !isQuotedField(line) {
 			// Non-quoted string field
 			i := bytes.IndexRune(line, r.Comma)
 			field := line
@@ -367,6 +380,9 @@ parseField:
 		} else {
 			// Quoted string field
 			fieldPos := pos
+			if line[0] == '=' { // leading equal should be ignored here
+				line = line[1:]
+			}
 			line = line[quoteLen:]
 			pos.col += quoteLen
 			for {
